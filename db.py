@@ -1,3 +1,4 @@
+import json
 from re import match
 import sqlite3
 import hashlib
@@ -32,23 +33,40 @@ class UserDatabase:
             raise AuthenticationError("Password is incorrect")
         return True
 
-    def add_user(self, username: str, passwd_hash: bin, email: str = ""):
+    def add_user(self, username: str, passwd_hash: bin, email_address: str = ""):
         pw = str(passwd_hash)[2:]
         try:
-            if email == "":
+            if email_address == "":
                 self.c.execute(f"""INSERT INTO Users (username, passwd_hash)
                 VALUES ("{username}", "{pw}");""")
             else:
-                if not match( r"^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$", email):
-                    raise ValueError("Email in incorrect format")
-                self.c.execute(f"""INSERT INTO Users (username, passwd_hash, email_address)
-                VALUES ("{username}", "{pw}", "{email}");""")
+                if check_email(email_address):
+                    self.c.execute(f"""INSERT INTO Users (username, passwd_hash, email_address)
+                    VALUES ("{username}", "{pw}", "{email_address}");""")
+                else:
+                    raise ValueError("Invalid Email Address")
         except sqlite3.IntegrityError:
             raise UserAlreadyExists()
-    
+
+    def get_user_data(self, username: str):
+        fields = ["username", "email_address"]
+        self.c.execute(f"""SELECT {", ".join(fields)} FROM Users WHERE username="{username}";""")
+        data = self.c.fetchone()
+        return json.dumps(dict(zip(fields, data)))
+
     def remove_user(self, username: str, passwd_hash: bin):
         if self.login(username, passwd_hash):
             self.c.execute(f"""DELETE FROM Users WHERE username="{username}";""")
+
+    def change_email(self, username: str, password_hash: bin, email_address: str):
+        if check_email(email_address):
+            if self.login(username, password_hash):
+                self.c.execute(f"""UPDATE Users SET email_address = "{email_address}"
+                WHERE username = "{username}";""")
+            else:
+                raise AuthenticationError("Login failed but didn't raise an error")
+        else:
+            raise ValueError("Invalid Email Address")
 
     def change_password(self, username: str, current_password_hash: bin, new_password_hash: bin):
         if self.login(username, current_password_hash):
@@ -69,6 +87,11 @@ class UserDatabase:
 
 def hash_password(passwd: str) -> bin:
     return bin(int(hashlib.sha256(passwd.encode('utf-8')).hexdigest(), 16))
+
+
+def check_email(email_address: str) -> bool:
+    return bool(match(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.["
+                      r"a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$", email_address))
 
 
 if __name__ == "__main__":

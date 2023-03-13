@@ -5,9 +5,19 @@ import os
 app = Flask(__name__)
 
 
-@app.route("/delete_user")
+@app.route("/delete_user", methods=["POST"])
 def delete_user():
-    return "Not implemented", 501
+    username = request.values.get("username")
+    password = request.values.get("password")
+    password_hash = hash_password(password)
+    try:
+        db.remove_user(username, password_hash)
+    except AuthenticationError as e:
+        return str(e), 401
+    except ValueError as e:
+        return str(e), 401
+    finally:
+        return f"User {username} successfully removed", 200
 
 
 @app.route("/gui/add_user")
@@ -29,12 +39,12 @@ def add_user():
     password_hash = hash_password(password)
     if len(username) > 50:
         return "username too long", 400
-    if len(email) > 50:
-        return "email too long", 400
     try:
-        if email == "":
+        if email is None:
             db.add_user(username, password_hash)
         else:
+            if len(email) > 50:
+                return "email too long", 400
             db.add_user(username, password_hash, email)
     except UserAlreadyExists:
         return "There is already a user with that username in the database", 400
@@ -42,6 +52,17 @@ def add_user():
         print(email)
         return str(e), 401
     return "Added", 201
+
+
+@app.route("/get_data")
+def get_data():
+    username = request.values.get("username")
+    try:
+        return db.get_user_data(username), 200
+    except AuthenticationError as e:
+        return str(e), 401
+    except ValueError as e:
+        return str(e), 401
 
 
 @app.route("/change_password", methods=["POST"])
@@ -63,7 +84,18 @@ def change_password():
 
 @app.route("/change_email", methods=["POST"])
 def change_email():
-    return "Not Implemented", 501
+    username = request.values.get("username")
+    password = request.values.get("password")
+    password_hash = hash_password(password)
+    email = request.values.get("email")
+    try:
+        db.change_email(username, password_hash, email)
+    except AuthenticationError as e:
+        return str(e), 401
+    except ValueError as e:
+        return str(e), 401
+    finally:
+        return f"Email for {username} successfully changed to {email}", 200
 
 
 @app.route("/debug")
