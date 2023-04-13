@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User database</title>
+</head>
+<body>
+    <ul>
+        {% if loggedIn %}
+        <li><a href="/gui/change_password">Change password</a></li>
+        <li><a href="/logout?redirect=/">Log out</a></li>
+        <li><a href="/gui/remove_user">Remove account</a></li>
+        {% else %}
+        <li><a href="/gui/add_user">Sign Up</a></li>
+        <li><a href="/gui/login">Log In</a></li>
+        {% endif %}
+    </ul>
+
+</body>
+</html>

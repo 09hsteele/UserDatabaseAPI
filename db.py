@@ -54,30 +54,24 @@ class UserDatabase:
         data = self.c.fetchone()
         return json.dumps(dict(zip(fields, data)))
 
-    def remove_user(self, username: str, passwd_hash: bin):
-        if self.login(username, passwd_hash):
-            self.c.execute(f"""DELETE FROM Users WHERE username="{username}";""")
+    def remove_user(self, username: str):
+        self.c.execute(f"""DELETE FROM Users WHERE username="{username}";""")
 
-    def change_email(self, username: str, password_hash: bin, email_address: str):
+    def change_email(self, username: str, email_address: str):
         if check_email(email_address):
-            if self.login(username, password_hash):
-                self.c.execute(f"""UPDATE Users SET email_address = "{email_address}"
-                WHERE username = "{username}";""")
-            else:
-                raise AuthenticationError("Login failed but didn't raise an error")
+            self.c.execute(f"""UPDATE Users SET email_address = "{email_address}"
+            WHERE username = "{username}";""")
         else:
             raise ValueError("Invalid Email Address")
 
     def change_password(self, username: str, current_password_hash: bin, new_password_hash: bin):
-        if self.login(username, current_password_hash):
-            self.c.execute(f"""UPDATE Users SET passwd_hash = "{str(new_password_hash)[2:]}"
+        self.c.execute(f"""UPDATE Users SET passwd_hash = "{str(new_password_hash)[2:]}"
             WHERE username = "{username}";""")
-        else:
-            raise AuthenticationError("Login failed but didn't raise an error")
 
     def __repr__(self):
         self.c.execute("SELECT * FROM Users")
         a = self.c.fetchall()
+        if len(a) == 0: return ""
         return "\n".join(", ".join(b) for b in a)
 
     def __del__(self):
